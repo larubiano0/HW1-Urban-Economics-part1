@@ -7,7 +7,7 @@ if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 pacman::p_load(
   tidyverse, janitor, fixest, broom, modelsummary, readr, lubridate
 )
-# 1) Rutas + carga cruda
+# 1) Rutas y carga
 DATA_DIR <- "C:/Users/pc/Downloads/proyecto urbaniaaa"
 OUT_DIR  <- file.path(DATA_DIR, "export")
 if (!dir.exists(OUT_DIR)) dir.create(OUT_DIR, recursive = TRUE)
@@ -38,21 +38,20 @@ df0 <- raw %>%
   dplyr::ungroup() %>%              # por si viene 'grouped_df'
   janitor::clean_names() %>%
   mutate(
-    # ---- coerciones seguras ----
     sale_price     = readr::parse_number(as.character(sale_price)),
-    year           = suppressWarnings(as.integer(year)),
-    year_built     = suppressWarnings(as.integer(year_built)),
-    building_sqft  = suppressWarnings(as.numeric(building_sqft)),
-    land_sqft      = suppressWarnings(as.numeric(land_sqft)),
-    num_bedrooms   = suppressWarnings(as.numeric(num_bedrooms)),
-    num_rooms      = suppressWarnings(as.numeric(num_rooms)),
-    num_full_baths = suppressWarnings(as.numeric(num_full_baths)),
-    num_half_baths = suppressWarnings(as.numeric(num_half_baths)),
-    num_fireplaces = suppressWarnings(as.numeric(num_fireplaces)),
+    year           = readr::parse_integer(as.character(year), na = c("", "NA")),
+    year_built     = readr::parse_integer(as.character(year_built), na = c("", "NA")),
+    building_sqft  = readr::parse_double(as.character(building_sqft), na = c("", "NA")),
+    land_sqft      = readr::parse_double(as.character(land_sqft),    na = c("", "NA")),
+    num_bedrooms   = readr::parse_double(as.character(num_bedrooms), na = c("", "NA")),
+    num_rooms      = readr::parse_double(as.character(num_rooms),    na = c("", "NA")),
+    num_full_baths = readr::parse_double(as.character(num_full_baths), na = c("", "NA")),
+    num_half_baths = readr::parse_double(as.character(num_half_baths), na = c("", "NA")),
+    num_fireplaces = readr::parse_double(as.character(num_fireplaces), na = c("", "NA")),
     pin            = as.character(pin),
     township_code  = as.character(township_code),
     
-    #normalización de central_air (texto tipo "Central A/C" vs "No Central A/C")
+    # normalización de central_air (texto tipo "Central A/C" vs "No Central A/C")
     central_air_chr = tolower(str_squish(as.character(central_air))),
     central_air_bin = case_when(
       # negativas explícitas primero
@@ -65,7 +64,6 @@ df0 <- raw %>%
       TRUE ~ NA_integer_
     ),
     
-    # filtros básicos
     .keep = "all"
   ) %>%
   filter(!is.na(sale_price), sale_price > 1000, !is.na(year)) %>%
@@ -113,11 +111,19 @@ cat("\nRango de años en datos:", years[1], "—", years[length(years)], "\n")
 base_year <- min(years)
 cat("Año base:", base_year, "\n")
 
+# mini-log de NAs post-coerción
+cand_num <- c("year","year_built","building_sqft","land_sqft",
+               "num_bedrooms","num_rooms","num_full_baths","num_half_baths","num_fireplaces")
+ coercion_na <- sapply(df0[cand_num], function(x) sum(is.na(x)))
+ readr::write_csv(tibble::tibble(var = names(coercion_na), na_count = as.integer(coercion_na)),
+                  file.path(OUT_DIR, "coercion_na_counts.csv"))
+
+saveRDS(df0, file.path(OUT_DIR, "clean_df0.rds"))
+ 
 # 3) Selección de controles y muestra completa
 
 N <- nrow(df0)
 
-# Candidatos (de tu chequeo anterior todos tienen datos, pero ponemos umbral por seguridad)
 cand_ctrl <- c("log_bldg","log_land","num_bedrooms","num_rooms",
                "full_baths","half_baths","firepl","age","central_air_bin")
 
@@ -132,11 +138,28 @@ cat("Controles usados (cumplen cobertura): ", paste(keep_ctrl, collapse=", "), "
 df_hedo <- df0 %>%
   dplyr::select(log_price, year, all_of(keep_ctrl), township_fe, prop_class) %>%
   tidyr::drop_na(log_price, year, all_of(keep_ctrl), township_fe, prop_class) %>%
-  mutate(year_f = factor(year))  # factor para usar i(year_f, ref=...)
+  mutate(
+    year_f      = factor(year),
+    township_fe = factor(township_fe),
+    prop_class  = factor(prop_class)
+  )
 
 cat("Muestra hedónica (n):", nrow(df_hedo), "de", N, "obs.\n")
-cat("Años presentes en la muestra hedónica:\n")
-print(sort(table(df_hedo$year)))
+
+# Conteo de años ordenado cronológicamente (no por frecuencia)
+yr_counts <- as.data.frame(table(df_hedo$year)) %>%
+  dplyr::mutate(year = as.integer(Var1), n = Freq) %>%
+  dplyr::arrange(year) %>%
+  dplyr::select(year, n)
+print(yr_counts, row.names = FALSE)
+
+# guardo para reproducibilidad y reporte
+readr::write_csv(
+  tibble::tibble(control = keep_ctrl),
+  file.path(OUT_DIR, "controls_used_hedonic.csv")
+)
+saveRDS(df_hedo, file.path(OUT_DIR, "df_hedo.rds"))
+
 
 
 # 4) Índice Hedónico con FE (township, clase) y clúster por township
@@ -149,7 +172,7 @@ cat("\nFórmula hedónica:\n", fml_txt, "\n")
 
 fml_hedo <- as.formula(fml_txt)
 
-# NOTA: paso los FE como vector de nombres (máxima compatibilidad de versiones)
+# NOTA: paso los FE como vector de nombres
 model_hedo <- fixest::feols(
   fml = fml_hedo,
   data = df_hedo,
@@ -172,14 +195,17 @@ hedo_tbl <- broom::tidy(model_hedo) %>%
                           method = "Hedónico (FE township+class)")) %>%
   dplyr::arrange(year)
 
-# Guarda resultado para revisar/usar luego
+# Guard resultado para revisar
 readr::write_csv(hedo_tbl, file.path(OUT_DIR, "index_hedonic.csv"))
 
-# Resumen corto en consola
+# Resumen
 cat("\nÍndice hedónico (primeras filas):\n")
 print(head(hedo_tbl, 5))
 cat("\nÍndice hedónico (últimas filas):\n")
 print(tail(hedo_tbl, 5))
+
+cl_sz <- df_hedo %>% count(township_fe, name = "n")
+message("Clusters con n=1: ", sum(cl_sz$n == 1))
 
 # 5) Repeat Sales (3 etapas)
 
@@ -291,65 +317,88 @@ cat("\nFE propiedad (primeras filas):\n"); print(head(fe_tbl, 5))
 cat("\nFE propiedad (últimas filas):\n");  print(tail(fe_tbl, 5))
 
 
-# 7) Unir y graficar
+# 7) Unir, graficar y validar
 
-library(ggplot2)
+library(ggplot2); library(dplyr); library(tidyr); library(readr)
 
-all_idx <- bind_rows(
-  hedo_tbl,
-  rs_tbl,
-  fe_tbl
-) %>%
+all_idx <- bind_rows(hedo_tbl, rs_tbl, fe_tbl) %>%
   arrange(method, year)
 
-readr::write_csv(all_idx, file.path(OUT_DIR, "indices_comparados.csv"))
+write_csv(all_idx, file.path(OUT_DIR, "indices_comparados.csv"))
 
 p_idx <- ggplot(all_idx, aes(x = year, y = index, color = method, linetype = method)) +
-  geom_line() +
+  geom_line(linewidth = 0.8) +
   geom_point(size = 1) +
   labs(
     title = "Índices de precios de vivienda – Cook County",
     subtitle = "Hedónico (FE township+class), Repeat Sales (3 etapas), FE por propiedad (cluster=pin)",
-    x = "Año", y = "Índice (base=100 en año base)"
+    x = "Año",
+    y = paste0("Índice (Base ", base_year, " = 100)")
   ) +
-  theme_minimal() +
+  theme_minimal(base_size = 12) +
   theme(legend.position = "bottom")
 
 ggsave(filename = file.path(OUT_DIR, "indices_comparados.png"),
        plot = p_idx, width = 9, height = 5, dpi = 300)
 
-cat("\nArchivos guardados en:\n", OUT_DIR, "\n",
-    "- index_hedonic.csv\n- index_repeat_sales.csv\n- index_fe_prop.csv\n- indices_comparados.csv\n- indices_comparados.png\n", sep = "")
+# Ahora,
 
-#En resumen:
-# Comparabilidad de años y correlaciones entre índices
-library(dplyr); library(tidyr); library(readr)
+# (1) Años comunes a los tres métodos
+yrs_common <- all_idx %>%
+  count(method, year) %>%
+  pivot_wider(names_from = method, values_from = n) %>%
+  filter(if_all(-year, ~ !is.na(.x))) %>%
+  pull(year)
 
-common_years <- Reduce(intersect, list(hedo_tbl$year, rs_tbl$year, fe_tbl$year))
-cmp <- bind_rows(hedo_tbl, rs_tbl, fe_tbl) %>%
-  filter(year %in% common_years) %>%
+indices_common <- all_idx %>% filter(year %in% yrs_common)
+write_csv(indices_common, file.path(OUT_DIR, "indices_common_years.csv"))
+
+# (2) Correlaciones entre métodos en años comunes
+wide_idx <- indices_common %>%
   select(year, method, index) %>%
-  pivot_wider(names_from = method, values_from = index) %>%
-  arrange(year)
+  pivot_wider(names_from = method, values_from = index)
 
-# Correlaciones entre las tres series
-cors <- cor(cmp %>% select(-year), use = "pairwise.complete.obs")
-round(cors, 3)
+cors <- cor(wide_idx %>% select(-year), use = "pairwise.complete.obs")
+write_csv(as.data.frame(as.table(cors)), file.path(OUT_DIR, "indices_correlations.csv"))
+cat("\nCorrelaciones (años comunes):\n"); print(round(cors, 3))
 
-# Ancho promedio de los IC (precsión
-ciw <- bind_rows(hedo_tbl, rs_tbl, fe_tbl) %>%
+# (3) Ancho promedio de IC por método
+ci_width <- all_idx %>%
+  mutate(width = upr - lwr) %>%
   group_by(method) %>%
-  summarise(mean_ci_width = mean(upr - lwr, na.rm = TRUE)) %>%
-  arrange(mean_ci_width)
-ciw
+  summarise(mean_ci_width = mean(width, na.rm = TRUE), .groups = "drop")
+write_csv(ci_width, file.path(OUT_DIR, "indices_ci_width.csv"))
+cat("\nAncho promedio de IC:\n"); print(ci_width)
 
-# Tamaños muestrales efectivamente usados por cada método
+# (4) Crecimientos por períodos
+subperiods <- tibble::tribble(
+  ~start,   ~end,
+  base_year, 2007,
+  2007,      2012,
+  2012,      2020
+)
 
-n_hedo_used <- stats::nobs(model_hedo)     # obs. usadas en hedónico
-n_rs_pairs  <- nrow(rs_pairs)              # pares en repeat sales
-n_fe_total  <- nrow(df_fe)                 # transacciones candidatas a FE
-n_fe_used   <- stats::nobs(mod_fe_prop)    # obs. usadas en FE por propiedad
-n_fe_drop   <- n_fe_total - n_fe_used      # singletons removidos
+growth_tbl <- crossing(subperiods, method = unique(all_idx$method)) %>%
+  rowwise() %>%
+  mutate(
+    idx_start = all_idx$index[all_idx$method == method & all_idx$year == start][1],
+    idx_end   = all_idx$index[all_idx$method == method & all_idx$year == end][1],
+    growth_pct = ifelse(is.finite(idx_start) & is.finite(idx_end),
+                        100 * (idx_end / idx_start - 1), NA_real_)
+  ) %>%
+  ungroup()
+
+write_csv(growth_tbl, file.path(OUT_DIR, "indices_growth.csv"))
+
+cat("\nArchivos guardados en:\n", OUT_DIR,
+    "\n- indices_comparados.csv\n- indices_comparados.png",
+    "\n- indices_common_years.csv\n- indices_correlations.csv\n- indices_ci_width.csv\n- indices_growth.csv\n", sep = "")
+
+n_hedo_used <- stats::nobs(model_hedo)
+n_rs_pairs  <- nrow(rs_pairs)
+n_fe_total  <- nrow(df_fe)
+n_fe_used   <- stats::nobs(mod_fe_prop)
+n_fe_drop   <- n_fe_total - n_fe_used
 
 sample_tbl <- tibble::tibble(
   metodo = c(
@@ -360,24 +409,5 @@ sample_tbl <- tibble::tibble(
   ),
   n = c(n_hedo_used, n_rs_pairs, n_fe_used, n_fe_drop)
 )
-
-print(sample_tbl)
 readr::write_csv(sample_tbl, file.path(OUT_DIR, "indices_samples.csv"))
 
-# Crecimientos acumulados y por subperíodos (útil para discutir desempeño)
-grow_tbl <- bind_rows(hedo_tbl, rs_tbl, fe_tbl) %>%
-  group_by(method) %>%
-  summarise(
-    base  = first(index[order(year)]),
-    last  = last(index[order(year)]),
-    growth_00_07 = (index[year==2007] / index[year==2000] - 1) * 100,
-    drop_07_11   = (index[year==2011] / index[year==2007] - 1) * 100,
-    recov_11_20  = (index[year==2020] / index[year==2011] - 1) * 100
-  )
-grow_tbl
-
-# Guardar resúmenes
-readr::write_csv(cmp,        file.path(OUT_DIR, "indices_common_years.csv"))
-readr::write_csv(ciw,        file.path(OUT_DIR, "indices_ci_width.csv"))
-readr::write_csv(sample_tbl, file.path(OUT_DIR, "indices_samples.csv"))
-readr::write_csv(grow_tbl,   file.path(OUT_DIR, "indices_growth.csv"))
