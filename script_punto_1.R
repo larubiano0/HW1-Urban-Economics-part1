@@ -191,6 +191,9 @@ beta <- numeric(length(years_all))
 beta[-base_idx] <- beta_restricted
 beta[ base_idx] <- 0
 names(beta) <- years_all
+se_beta <- numeric(length(years_all))
+names(se_beta) <- years_all
+
 
 # Errores estándar para beta 
 XtW <- t(X_restricted * w)
