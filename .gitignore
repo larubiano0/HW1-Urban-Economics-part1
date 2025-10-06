@@ -1,2 +1,8 @@
 .Rhistory
 .DS_Store
+writeup/*.aux
+writeup/*.fdb_latexmk
+writeup/*.fls
+writeup/*.log
+writeup/*.out
+writeup/*.synctex.gz
