@@ -101,11 +101,16 @@ m_hedonic <- feols(   # Standard errors?
   cluster = ~township_code
 )
 
+summary(m_hedonic)
+
 m_hedonic2 <- feols(
   fml2,
   data = df2,
   cluster = ~township_code
 )
+
+summary(m_hedonic2)
+
 
 
 # Comparación lado a lado ---------------------------
@@ -171,11 +176,14 @@ gap <- as.integer(t2 - t1)
 
 var_lm <- lm(I(e1^2) ~ gap + I(gap^2)) # Modelo cuadrático etapa 2
 var_hat <- fitted(var_lm)  
+summary(var_lm)
 
 # Pesos correctos para generalized least squares (1/Var)
 w <- 1 / var_hat
 
 fit_wls <- lm.wfit(x = X_restricted, y = y, w = w)
+
+summary(fit_wls$r.squared)
 
 # Reconstruir beta incluyendo el año base en 0
 beta_restricted <- fit_wls$coefficients
