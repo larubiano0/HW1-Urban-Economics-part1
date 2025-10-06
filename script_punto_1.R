@@ -233,19 +233,19 @@ etable(m_fe, se = "cluster", cluster = "pin",
        title = "FE de propiedad con dummies de año (cluster por propiedad)")
 
 
-###Gráfico ---------------------------
-  
+# Gráfico ---------------------------
+
 base_year <- min(df$year, na.rm = TRUE)  # Año base común
 zcrit <- qnorm(.975)
 
-# Helper ROBUSTO: extrae serie de índices (y CI) desde un modelo fixest con dummies de año
+# Helper: extrae serie de índices (y CI) desde los modelos
 index_from_fixest <- function(mod, model_label, base_year) {
   coefs <- coef(mod)
   vcv   <- vcov(mod)
   nm    <- names(coefs)
   
   # Detecta variantes en nombres de año: factor(year)YYYY, i(year,...)::YYYY, year::YYYY, etc.
-  is_year_term <- grepl("factor\\(year\\)|^i\\(year|\\byear(::|:)", nm)
+  is_year_term <- grepl("factor\\(year\\)|^i\\(year|\\byear(::|:)", nm) 
   if (!any(is_year_term)) is_year_term <- grepl("year.*\\d+$", nm, perl = TRUE)
   
   nm_yr <- nm[is_year_term]
@@ -272,13 +272,14 @@ index_from_fixest <- function(mod, model_label, base_year) {
     se    = as.numeric(se)
   ) |>
     mutate(
-      index = 100 * exp(beta),                 # base_year → 100
+      index = 100 * exp(beta),                 # base_year => 100
       lwr   = 100 * exp(beta - zcrit * se),
       upr   = 100 * exp(beta + zcrit * se)
     )
 }
 
-# ── Series por modelo ─────────────────────────────────────────────────────────
+# Construir df resultados (plot_df)
+
 df_h1  <- index_from_fixest(m_hedonic,  "Hedónico (con land_sqft)", base_year)
 df_h2  <- index_from_fixest(m_hedonic2, "Hedónico (sin land_sqft)", base_year)
 
@@ -299,19 +300,17 @@ plot_df <- bind_rows(df_h1, df_h2, df_ipvu, df_fe) |>
   distinct(model, year, .keep_all = TRUE) |>
   arrange(model, year)
 
-# Paleta alto contraste (líneas) y versión aclarada para bandas
-
 cols_line <- c(
   "Reventas (IPVU)"            = "#2CA02C",
   "Hedónico (con land_sqft)"   = "#D95F02",
   "Hedónico (sin land_sqft)"   = "#0033A0",
   "Efectos fijos (propiedad)"  = "#D62728"
 )
-cols_fill <- alpha(cols_line, 0.18)  # base para la banda (y halo)
+cols_fill <- alpha(cols_line, 0.18)  
 
-
+# 4 gráficas
 ggplot(plot_df, aes(year, index)) +
-  # 1) Banda "halo" difuminada (debajo)
+  # Banda "halo" difuminada (debajo)
   with_blur(
     geom_ribbon(
       aes(ymin = lwr, ymax = upr, fill = model),
@@ -319,16 +318,16 @@ ggplot(plot_df, aes(year, index)) +
     ),
     sigma = 4, expand = 2
   ) +
-  # 2) Banda nítida y más clara (encima)
+  # Banda nítida y más clara (encima)
   geom_ribbon(
     aes(ymin = lwr, ymax = upr, fill = model),
     alpha = 0.12, color = NA, show.legend = FALSE
   ) +
-  # 3) Línea y puntos
+  # Línea y puntos
   geom_line(aes(color = model), linewidth = 1.2) +
   geom_point(aes(color = model), shape = 21, fill = "white",
              stroke = 0.6, size = 2) +
-  # Escalas (mismos colores que definiste)
+  # Escalas
   scale_color_manual(values = cols_line, guide = "none") +
   scale_fill_manual(values = cols_fill, guide = "none") +
   scale_x_continuous(breaks = scales::pretty_breaks(5)) +
@@ -343,14 +342,14 @@ ggplot(plot_df, aes(year, index)) +
 
 
 
-
+# gráfica conjunta
 ggplot(plot_df, aes(x = year, y = index, color = model, fill = model)) +
-  # HALO difuminado (debajo): hereda fill=model y usa la escala manual
+  # Halo difuminado (debajo)
   with_blur(
     geom_ribbon(aes(ymin = lwr, ymax = upr), color = NA, show.legend = FALSE),
     sigma = 4, expand = 2
   ) +
-  # Banda nítida (encima)
+  # BHalo difuminado (encima)
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.12, color = NA, show.legend = FALSE) +
   # Líneas y puntos
   geom_line(linewidth = 1.25) +
