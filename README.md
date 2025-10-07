@@ -1,4 +1,3 @@
-```markdown
 # Índices de Precios de Vivienda - Cook County, Illinois
 
 ## Descripción del Proyecto
