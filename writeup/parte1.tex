@@ -213,5 +213,28 @@ Partiendo de lo anterior, los índices de precios se estiman en tres etapas:
 
 \subsection{Estimador de efectos fijos con errores agrupados}
 
+El estimador de efectos fijos (FE) explota la variación \emph{intra-propiedad} para aislar cambios en el precio no explicados por características inobservables \emph{invariantes en el tiempo} de cada vivienda. 
+Para esto se filtraron las propiedades con al menos dos ventas en el periodo de estudio, resultando en $233.388$ observaciones.
+
+La especificación es:
+
+\[ \log(P)_{it} = \sum_{t=t_0}^{T} \delta_t D_{it} + \sum_{j=1}^h \beta_j Z_{ij} + \alpha_i + \epsilon_{it} \]
+
+En donde:
+
+\begin{itemize}
+  \item $D_{it}$ es una variable indicadora de la venta de la vivienda $i$ en el tiempo $t$.
+  \item $Z$ representa características estructurales y de ubicación de la vivienda que varían en el tiempo, en particular 
+  \texttt{building\_sqft, num\_bedrooms, num\_rooms, num\_full\_baths, num\_half\_baths, renovation, recent\_renovation, central\_air, central\_heating, garage\_attached, garage\_size, attic\_finish, basement\_finish}.
+  \item $\alpha_i$ es el efecto fijo de la vivienda $i$.
+  \item $\epsilon_{it}$ es el término de error, el cual se asume que es idénticamente distribuido, $\epsilon_{it} \sim N(0, \sigma^2)$.
+\end{itemize}
+
+En este caso asumimos que los errores pueden estar correlacionados dentro de cada propiedad a lo largo del tiempo, pero son independientes entre diferentes propiedades, y por lo tanto 
+agrupamos los errores a nivel de propiedad.
+
+Aquí los índices y los errores estándar se calculan de forma similar a la metodología de índices hedónicos.
+
+\section{Resultados y análisis}
 
 \end{document}
