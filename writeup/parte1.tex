@@ -37,7 +37,7 @@
 \href{mailto:la.rubiano@uniandes.edu.co}{\texttt{la.rubiano@uniandes.edu.co}}}
 \and
 \IEEEauthorblockN{Andres Felipe Rosas Castillo}
-\IEEEauthorblockA{0\\
+\IEEEauthorblockA{202013471\\
 \href{mailto:a.rosasc@uniandes.edu.co}{\texttt{a.rosasc@uniandes.edu.co}}}
 \and
 \IEEEauthorblockN{Carlos Andrés Castillo Cabrera}
@@ -132,6 +132,86 @@ es decir $\text{var}(I_t) \approx (100 \cdot \exp(\beta_t)) \cdot \text{var}(\be
 
 
 \subsection{Índice de ventas repetidas (IPVU)}
+
+En este índice requiere identificar viviendas que hayan sido vendidas por lo
+menos dos veces dentro del periodo de estudio, basado en la metodología de \textit{Case y Shiller} (1989).
+
+Por lo tanto, filtramos el conjunto de datos para incluir únicamente aquellas viviendas que han sido vendidas más de una vez
+durante el periodo de estudio y que no hayan presentado modificaciones significativas en
+su estructura física. Para lo último, descartamos las ventas tales que la variable \texttt{recent\_renovation} sea \texttt{TRUE}. 
+La base de datos resultante tiene $233.233$ observaciones. 
+
+En este modelo se asume que el comportamiento del precio de la misma vivienda
+$P_t$ es un proceso estocástico dado por:
+
+\[ \ln(P_{i,t}) = \beta_t + H_{i,t} + N_{i, t}\] 
+
+En donde $\beta_t$ corresponde al índice del precio, $H_{i, t}$ es una caminata aleatoria
+gaussiana que describe como el cambio del precio de una vivienda individual se desvía en
+el tiempo respecto a la variación del índice de mercado, y $N_{i, t}$ son errores que se asumen 
+normales y representa las diferencias idiosincrásicas de las propiedades en un momento
+del tiempo.
+
+Para este índice se crea una variable que representa el cambio porcentual total en el precio de una vivienda entre dos transacciones. Esta variable se define como:
+
+\begin{align*}
+  \Delta V_i &= \ln(P_{i,t})-\ln(P_{i,s})\\
+  &= \beta_t - \beta_s + H_{i,t} - H_{i,s} + N_{i,t} - N_{i,s}\\
+\end{align*}
+
+Sobre los términos de perturbación se asume que 
+
+\begin{align*}
+  \mathbb{E}[H_{i,t} - H_{i, s}] &= 0 (\text{media cero}) \\
+  \text{Var}(H_{i,t} - H_{i, s}) &= A(t-s) + B(t-s)^2 (\tiny\text{var cuadrática en el tiempo})\\
+  \mathbb{E}[N_{i, t}] &= 0 (\text{media cero})\\
+  \text{Var}(N_{i, t}) &= c (\text{varianza constante})\\
+  \mathbb{E}[H_{i,t}N_{i, t}] &= 0 (\text{independencia})
+\end{align*}
+
+Partiendo de lo anterior, los índices de precios se estiman en tres etapas:
+
+\begin{enumerate}
+  \item Primera etapa: Se estiman los $\beta$ iniciales y los errores.
+  
+  Para una venta repetida de una vivienda $i$ se estima el cambio porcentual de la siguiente forma:
+
+  \begin{align*}
+    \Delta V_i &= \sum_{t=t_0}^{T} \ln(P_{i,t}) D_{it}\\
+    &= \sum_{t=t_0}^{T} \beta_t D_{it} + \varepsilon_{i}
+  \end{align*}
+
+  En donde $D_{it}$ es una variable indicadora que toma valor 
+  $1$ cuando el precio de la vivienda $i$ es
+  observado por segunda vez en $t$, $-1$ si el precio de la vivienda $i$ fue observado por primera
+  vez en $t$, y cero de lo contrario. 
+
+  Aquí $\beta_t$ se estima a través de mínimos cuadrados ordinarios.
+
+  \item Segunda etapa: Se estima la varianza de la caminata aleatoria.
+  
+  En esta etapa se estiman los coeficientes $A$, $B$ y $c$ a través de mínimos cuadrados ordinarios,
+  mediante la expresión:
+
+  \[ \mathbb{E}[\varepsilon_i^2] = A(t-s) + B(t-s)^2 + c \]
+
+  Es decir, se estima la varianza de los errores al cuadrado como función cuadrática del tiempo entre ventas.
+  En este caso $\mathbb{E}[\varepsilon_i^2]$ es la varianza muestral de los errores estimados en la primera etapa.
+  Si los coeficientes estimados $A$ y $B$ son positivos y significativos, se debe continuar con la tercera etapa, 
+  en tal caso la raíz cuadrada de los valores estimados por la ecuación se utiliza para ponderar por mínimos cuadrados generalizados.
+
+  \item Tercera etapa: Se re-estiman los $\beta$ utilizando mínimos cuadrados generalizados.
+  
+  Es decir, se estima 
+
+  \[ \cfrac{\Delta V_i}{\sqrt{\hat{\varepsilon_i^2}}} = \sum_{t=t_0}^{T} \cfrac{\beta_t}{\sqrt{\hat{\varepsilon_i^2}}} D_{it} + \cfrac{\varepsilon_{i}}{\sqrt{\hat{\varepsilon_i^2}}} \]
+
+  Posteriormente, los indices y los errores estándar se calculan de forma similar a la metodología de índices hedónicos.
+
+\end{enumerate}
+
+
+\subsection{Estimador de efectos fijos con errores agrupados}
 
 
 \end{document}
