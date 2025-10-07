@@ -89,5 +89,49 @@ cual es la variable dependiente de interés en los respectivos índices de preci
 
 \section{Metodología}
 
+En todas las metodologías se normaliza el índice tomando como base el año 2000, es decir, el índice toma valor 100 en el año 2000.
+
+\subsection{Índice hedónico}
+
+Un índice hedónico se encuentra definido por la siguiente regresión.
+
+\[ \log(P)_{it} = \sum_{t=t_0}^{T} \delta_t D_{it} + \sum_{j=1}^h \beta_j H_{ij} + \sum_{k=1}^n \beta_k N_{ik} + \mu_{it} \]
+
+En donde:
+
+\begin{itemize}
+  \item $\log{P}_{it}$ es el logaritmo natural del precio de venta de la vivienda $i$ en el tiempo $t$, ($t = t_0, \ldots, T$).
+  \item $D_{it}$ es una variable indicadora de la venta de la vivienda $i$ en el tiempo $t$.
+  \item $H$ representa características estructurales de la vivienda.
+  \item $N$ representa características de la ubicación de la vivienda.
+  \item $\mu_{it}$ es el término de error, el cual se asume que es idénticamente distribuido, $\mu_{it} \sim N(0, \sigma^2)$.
+\end{itemize}
+
+En este caso estimamos dos índices hedónicos diferentes, en donde $t_0 = 2000$ y $T = 2020$. 
+
+En el primer modelo las características estructurales $H$ son:
+
+\texttt{class, year\_built, building\_sqft, land\_sqft, num\_bedrooms, num\_rooms, num\_full\_baths, num\_half\_baths, num\_fireplaces,
+type\_of\_residence, construction\_quality, attic\_finish, garage\_attached, garage\_area\_included, garage\_size, garage\_ext\_wall\_material, attic\_type, basement\_type, ext\_wall\_material, central\_heating, basement\_finish, roof\_material, renovation, recent\_renovation, porch, central\_air}
+
+y en el segundo modelo son las mismas características estructurales pero sin incluir \texttt{land\_sqft}.
+
+en ambos modelos las características de ubicación $N$ son:
+
+\texttt{township\_code, site\_desirability}. 
+
+La diferencia entre los modelos es que en el primero se incluye la covariable 
+\texttt{land\_sqft}, pero se eliminan las observaciones con valores faltantes en esta variable,
+mientras que en el segundo modelo no se incluye esta covariable, pero se utilizan todas las observaciones.
+
+Asimismo, de manera preventiva se agrupan los errores a nivel de \texttt{township\_code}, es decir, se asume que los errores pueden estar correlacionados 
+dentro de cada \textit{township}, pero son independientes entre diferentes \textit{townships}.
+
+Finalmente, para estimar los índices se calcula $I_t = 100 \cdot \exp(\beta_t - \beta_{2000}) = 100 \cdot \exp(\beta_t)$, y se calculan sus errores estándar utilizando el método del delta, 
+es decir $\text{var}(I_t) \approx (100 \cdot \exp(\beta_t)) \cdot \text{var}(\beta_t)$.
+
+
+\subsection{Índice de ventas repetidas (IPVU)}
+
 
 \end{document}
