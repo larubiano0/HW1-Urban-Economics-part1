@@ -1,0 +1,93 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{moresize}
+\usepackage{booktabs}
+\usepackage[para,online,flushleft]{threeparttable}
+
+
+\makeatletter
+\newcommand{\linebreakand}{%
+  \end{@IEEEauthorhalign}
+  \hfill\mbox{}\par
+  \mbox{}\hfill\begin{@IEEEauthorhalign}
+}
+\makeatother
+
+
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{\textit{Cook County, IL:} Índices de precios de viviendas}
+
+\author{%
+\IEEEauthorblockN{Luis Alejandro Rubiano Guerrero}
+\IEEEauthorblockA{202013482\\
+\href{mailto:la.rubiano@uniandes.edu.co}{\texttt{la.rubiano@uniandes.edu.co}}}
+\and
+\IEEEauthorblockN{Andres Felipe Rosas Castillo}
+\IEEEauthorblockA{0\\
+\href{mailto:a.rosasc@uniandes.edu.co}{\texttt{a.rosasc@uniandes.edu.co}}}
+\and
+\IEEEauthorblockN{Carlos Andrés Castillo Cabrera}
+\IEEEauthorblockA{202116837\\
+\href{mailto:ca.castilloc1@uniandes.edu.co}{\texttt{ca.castilloc1@uniandes.edu.co}}}
+}
+
+
+
+\maketitle
+
+
+\section{Introducción}
+
+A través de este informe se construyen y se comparan \textbf{cuatro índices de precios de vivienda} para 
+\textit{Cook County, Illinois} para el periodo comprendido entre 2000 y 2020. Las metodologías correspondientes a 
+cada uno de los índices son las siguientes: (i) y (ii) índices de precios hedónicos, (iii) Índice de precios de la vivienda usada (IPVU), 
+y (iv) estimador de efectos fijos con errores agrupados a nivel de propiedad. El objetivo de este informe es comparar y contrastar
+ los resultados obtenidos a través de cada una de las metodologías, así como discutir las ventajas y desventajas de cada una de ellas.
+
+En la sección II. se describe el conjunto de datos utilizado, así como el proceso de limpieza y tratamiento de los datos.
+  La sección III. detalla la metodología utilizada para cada uno de los índices. En la sección IV. se presentan los resultados obtenidos, 
+  así como un análisis comparativo entre los diferentes índices. Finalmente, en la sección V. se presentan las conclusiones del informe 
+  y en la sección VI. se proporciona información adicional para la reproducibilidad del análisis.
+
+\section{Datos y preparación}
+
+\subsection{Descripción del conjunto de datos}
+
+El conjunto de datos utilizado en este informe es \texttt{dataTaller01\_PriceIndeces.Rds}, 
+el cual contiene información sobre ventas de viviendas en \textit{Cook County, Illinois} entre los años 2000 y 2020.
+En total, el conjunto de datos contiene $427.649$ observaciones y $31$ variables. Estas variables incluyen 
+el \texttt{pin} (identificador único de la propiedad), \texttt{year} (fecha de venta de la vivienda),
+  \texttt{sale\_price} (precio de venta de la vivienda), \texttt{township\_code} (código local correspondiente al \textit{township} donde se ubica la propiedad),
+  así como 27 covariables continuas y categóricas de características estructurales y de ubicación de las viviendas.
+
+\subsection{Limpieza y tratamiento}
+
+Se encontraron valores faltantes para $1060$ de las observaciones, en las variables 
+\texttt{building\_sqft}, \texttt{num\_bedrooms}, \texttt{num\_rooms}, \texttt{num\_full\_baths},
+\texttt{num\_half\_baths} y \texttt{num\_fireplaces}. Estas observaciones fueron eliminadas del conjunto de datos.
+
+Adicionalmente, después de eliminar las anteriores observaciones, se encontraron $151.929$ observaciones con 
+valores faltantes en la variable \texttt{land\_sqft}, lo cual representa aproximadamente el $36\%$ del total de las observaciones.
+Estas fueron tratadas de manera diferente dependiendo de la metodología utilizada para construir los índices de precios de vivienda.
+
+Adicionalmente se creó la variable \texttt{log\_sale\_price}, la cual corresponde al logaritmo natural del precio de venta de la vivienda, la 
+cual es la variable dependiente de interés en los respectivos índices de precios.
+
+\section{Metodología}
+
+
+\end{document}
